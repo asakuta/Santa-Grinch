@@ -1,0 +1,573 @@
+<html>
+<head>
+    <title>Go Santa-san</title>
+<script>
+var laneCount=6;
+var santaSpace=window.innerWidth*0.8;
+var imgHeight=0;
+var santaX;
+var santaY;
+var santaDown=0;
+var grinchData=[];
+var presData=[];
+var grinchCount=10;
+var presCount=10;
+var santaSpeed=10;
+var grinchSpeed=10;
+var presSpeed=(-10);
+var attackRate=5000;
+var pauseGame=true;
+var startAttack=true;
+var hit=0;
+var ammo=10;
+var resize="false";
+var prevHeight;
+var prevWidth;
+function initialise()
+{
+    var laneHeight=(window.innerHeight/laneCount)-3;
+    imgHeight=laneHeight-((7-laneCount)*5); //needs attention.
+    santaX=window.innerWidth/5*(4+(laneCount*0.02));
+    for(var i=0; i<6; i=i+1)
+    {
+        var lane=document.getElementById("lane"+i);
+        lane.style.display="none";
+    }
+    for(var i=0; i<laneCount; i=i+1)
+    {
+        var lane=document.getElementById("lane"+i);
+        lane.style.display="block";
+        lane.style.top=i*laneHeight;
+        lane.style.height=laneHeight;
+    }
+    var Santa=document.getElementById("santa");
+    if(resize=="false")
+    {
+        santaY=(window.innerHeight-imgHeight-10);
+        Santa.style.height=imgHeight;
+        Santa.style.top=santaY;
+        Santa.style.left=santaX;
+        document.body.onkeydown=santaAction;
+        render();
+        prevHeight=window.innerHeight;
+        prevWidth=window.innerWidth;
+    }
+    if(resize=="true")
+    {
+        santaPrev=santaY;
+        santaY=santaPrev*(window.innerHeight/prevHeight);
+        Santa.style.height=imgHeight;
+        Santa.style.top=santaY;
+        Santa.style.left=santaX;
+        for(var i=0; i<grinchData.length; i=i+1)
+        {
+            var Grinch=document.getElementById("grinch"+grinchData[i].id);
+            Grinch.style.height=imgHeight;
+            console.debug(grinchData[i].down);
+            var grinchY=grinchData[i].down*(window.innerHeight/prevHeight);
+            console.debug(grinchY);
+            grinchX=grinchData[i].left*(window.innerWidth/prevWidth);
+            Grinch.style.top=grinchY;
+            Grinch.style.left=grinchX;
+            grinchData[i].down=grinchY;
+            grinchData[i].left=grinchX;
+        }
+        for(var i=0; i<presData.length; i=i+1)
+        {
+            var Present=document.getElementById("present"+presData[i].id);
+            Present.style.height=imgHeight;
+            console.debug(presData[i].down);
+            var presY=presData[i].down*(window.innerHeight/prevHeight);
+            console.debug(presY);
+            presX=presData[i].left*(window.innerWidth/prevWidth);
+            Present.style.top=presY;
+            Present.style.left=presX;
+            presData[i].down=presY;
+            presData[i].left=presX;
+        }
+        prevHeight=window.innerHeight;
+        prevWidth=window.innerWidth;
+        resize="false";
+    }
+}
+function instructions(value)
+{
+    if(value<2)
+    {
+        document.getElementById("inst1").style.display="none";
+        if(value==0)
+        {
+            document.getElementById("inst2").style.display="block";
+        }
+        else
+        {
+            document.getElementById("inst3").style.display="block";
+        }
+    }
+    if(value==2)
+    {
+        document.getElementById("inst2").style.display="none";
+        document.getElementById("inst3").style.display="block";
+    }
+    if(value==3)
+    {
+        document.getElementById("inst5").style.display="none";
+        initialise();
+        pauseGame=false;
+        render();
+    }
+    if(value==4)
+    {
+        document.getElementById("inst5").style.display="none";
+        document.getElementById("inst3").style.display="block";
+    }
+}
+function userChoice(difficulty, lanes)
+{
+    if(lanes==0)
+    {
+        if(difficulty==1)
+        {
+            grinchSpeed=10;
+            presSpeed=(-10);
+        }
+        if(difficulty==2)
+        {
+            grinchSpeed=18;
+            presSpeed=(-15);
+            attackRate=3000;
+        }
+        if(difficulty==3)
+        {
+            grinchSpeed=25;
+            presSpeed=(-20);
+            attackRate=1500;
+        }
+        document.getElementById("inst3").style.display="none";
+        document.getElementById("inst4").style.display="block";
+    }
+    if(difficulty==0)
+    {
+        laneCount=lanes;
+        document.getElementById("inst4").style.display="none";
+        document.getElementById("inst5").style.display="block";
+    }
+}
+function search(list, ID)
+{
+    var result=false;
+    for(var i=0; i<list.length; i=i+1)
+    {
+        if(list[i].id==ID)
+        {
+            result=true;
+        }
+    }
+    return result;
+}
+function santaAction(key)
+{
+    if(pauseGame==false)
+    {
+        if(key.keyCode==40 || key.keyCode==38)
+        {
+        if(key.keyCode==40) //down
+        {
+            santaDown=santaSpeed;
+        }
+        if(key.keyCode==38) //up
+        {
+            santaDown=santaSpeed*(-1);
+        }
+        if(santaY+santaDown<0 || santaY+santaDown>=window.innerHeight-imgHeight-santaSpeed)
+        {
+            santaDown=0;
+        }
+        var Santa=document.getElementById("santa");
+        Santa.style.top=santaY+santaDown;
+        santaY=santaY+santaDown;
+        }
+        if(startAttack==true)
+        {
+            grinchAttack();
+            startAttack=false;
+        }
+        if(key.keyCode==32 && presData.length<presCount) //space
+        {
+            var id=(-1);
+            if(presData.length==0)
+            {
+                id=0;
+            }
+            else
+            {
+                for(var i=0; i<presCount; i=i+1)
+                {
+                    var result=search(presData, i);
+                    if(result==false)
+                    {
+                        id=i;
+                        i=presCount;
+                    }
+                }
+            }
+            if(id!=(-1))
+            {
+                var Present=document.getElementById("present"+id);
+                Present.style.height=imgHeight;
+                Present.style.top=santaY;
+                Present.style.left=santaX-imgHeight-presSpeed;
+                Present.style.display="block";
+                presData[presData.length]={"id": id, "down": santaY, "left": santaX-imgHeight};
+            }
+        }
+    }
+}
+function grinchAttack()
+{
+    if(pauseGame==false)
+    {
+        if(grinchData.length<grinchCount)
+        {
+            var lane=Math.floor(Math.random()*laneCount);
+            var id=(-1);
+            if(grinchData.length==0)
+            {
+                id=0;
+            }
+            else
+            {
+                for(var i=0; i<grinchCount; i=i+1)
+                {
+                    var result=search(grinchData, i);
+                    if(result==false)
+                    {
+                        id=i;
+                        i=grinchCount;
+                    }
+                }
+            }
+            if(id!=(-1))
+            {
+                var Grinch=document.getElementById("grinch"+id);
+                Grinch.style.height=imgHeight;
+                var grinchY=(window.innerHeight/laneCount*lane);
+                Grinch.style.top=grinchY;
+                Grinch.style.left=0;
+                Grinch.style.display="block";
+                grinchData[grinchData.length]={"id": id, "down": grinchY, "left": 0};
+            }
+        }
+        setTimeout(grinchAttack, attackRate);
+    }
+}
+function Delete(list, ID)
+{
+    var tempList=[];
+    for(var i=0; i<list.length; i=i+1)
+    {
+        if(list[i].id!=ID)
+        {
+            tempList[tempList.length]=list[i];
+        }
+    }
+    return tempList;
+}
+function collision()
+{
+    var gIDs=[];
+    var pIDs=[];
+    for(var i=0; i<grinchData.length; i=i+1)
+    {
+        for(var j=0; j<presData.length; j=j+1)
+        {
+            if(presData[j].down<grinchData[i].down+20 && presData[j].down>grinchData[i].down-20)
+            {
+                if(presData[j].left<grinchData[i].left+20)
+                {
+                    gIDs[gIDs.length]=grinchData[i].id;
+                    pIDs[pIDs.length]=presData[j].id;
+                }
+            }
+            if(presData[j].left<0)
+            {
+                pIDs[pIDs.length]=presData[j].id;
+            }
+        }
+    }
+    if(gIDs.length>0)
+    {
+        for(var i=0; i<gIDs.length; i=i+1)
+        {
+            var newList=Delete(grinchData, gIDs[i]);
+            grinchData=newList;
+            document.getElementById("grinch"+gIDs[i]).style.display="none";
+        }
+        hit=hit+gIDs.length;
+        document.getElementById("hit").innerText="Hit: "+hit;
+    }
+    if(pIDs.length>0)
+    {
+        for(var i=0; i<pIDs.length; i=i+1)
+        {
+            var newList=Delete(presData, pIDs[i]);
+            presData=newList;
+            document.getElementById("present"+pIDs[i]).style.display="none";
+        }
+    }
+}
+function gameOver()
+{
+    if(grinchData.length!=0)
+    {
+        for(var i=0; i<grinchData.length; i=i+1)
+        {
+            if(grinchData[i].left>santaSpace-10)
+            {
+                pauseGame=true;
+                document.getElementById("gameOver").style.display="block";
+            }
+        }
+    }
+}
+function windowResize()
+{
+    resize="true";
+    initialise();
+}
+function render()
+{
+    for(var i=0; i<grinchData.length; i=i+1)
+    {
+        var Grinch=document.getElementById("grinch"+grinchData[i].id);
+        var grinchX=grinchData[i].left;
+        Grinch.style.left=grinchX+grinchSpeed;
+        grinchData[i].left=grinchX+grinchSpeed;
+    }
+    for(var i=0; i<presData.length; i=i+1)
+    {
+        var Present=document.getElementById("present"+presData[i].id);
+        var presX=presData[i].left;
+        Present.style.left=presX+presSpeed;
+        presData[i].left=presX+presSpeed;
+    }
+    collision();
+    gameOver();
+    ammo=10-presData.length;
+    document.getElementById("ammo").innerText="Ammo: "+ammo;
+    if(pauseGame==false)
+    {
+        setTimeout(render, 200);
+    }
+}
+</script>
+<style>
+    html
+    {
+        overflow: hidden;
+    }
+    body
+    {
+        margin-top: 0px;
+        margin-bottom: 0px;
+        padding: 0px;
+    }
+    #SantaSpace
+    {
+        position: absolute;
+        display: block;
+        top: 0%;
+        left: 80%;
+        height: 100%;
+        width: 20%;
+        background-color: white;
+        margin: 0px;
+        padding: 0px;
+        border-left: solid;
+        border-color: black;
+    }
+    .Lane
+    {
+        position: absolute;
+        display: block;
+        left: 0%;
+        width: 80%;
+        background-color: white;
+        margin: 0px;
+        padding: 0px;
+        border-top: solid;
+        border-color: black;
+    }
+    img
+    {
+        z-index: 1;
+        position: absolute;
+        width: auto;
+    }
+    #inst1, #inst2, #inst3, #inst4, #inst5, #gameOver
+    {
+        position: absolute;
+        z-index: 2;
+        left: 50%;
+        top: 30%;
+        width: 600px;
+        height: auto;
+        margin-left: -300px;
+        padding: 0px;
+        background-color:white;
+        color: black;
+        text-align: center;
+        font-family: Arial, sans-serif;
+        font-size: 20;
+        border: 2px;
+        border-style: solid;
+        border-color: black;
+    }
+    button
+    {
+        padding: 10px 20px;
+        margin-bottom: 20px;
+        margin-left: 10px;
+        background-color: DDDDDD;
+        color: black;
+        text-align: center;
+        font-size: 20;
+        cursor: pointer;
+        border: 1px;
+        border-style: solid;
+        border-color: black;
+    }
+    button:hover
+    {
+        background-color: BBBBBB;
+    }
+    a
+    {
+        padding: 10px 20px;
+        background-color: DDDDDD;
+        color: black;
+        text-align: center;
+        font-size: 20;
+        cursor: pointer;
+        border: 1px;
+        border-style: solid;
+        border-color: black;
+        text-decoration: none;
+    }
+    a:hover
+    {
+        background-color: BBBBBB;
+    }
+    .score
+    {
+        position: absolute;
+        display: block;
+        z-index: 2;
+        left: 92%;
+        top: 1%;
+        width: 100px;
+        height: auto;
+        background-color:white;
+        color: black;
+        text-align: center;
+        font-family: Arial, sans-serif;
+        font-size: 15;
+        border: 2px;
+        border-style: solid;
+        border-color: black;
+        padding: 0px;
+    }
+    #hit, #ammo
+    {
+        padding: 0px;
+        margin: 0px;
+    }
+</style>
+</head>
+<body onload="initialise()" onresize="windowResize()">
+    <img src="Santa.jpg" id="santa" style="display: block">
+    <img src="Grinch.jpg" id="grinch0" style="display: none">
+    <img src="Grinch.jpg" id="grinch1" style="display: none">
+    <img src="Grinch.jpg" id="grinch2" style="display: none">
+    <img src="Grinch.jpg" id="grinch3" style="display: none">
+    <img src="Grinch.jpg" id="grinch4" style="display: none">
+    <img src="Grinch.jpg" id="grinch5" style="display: none">
+    <img src="Grinch.jpg" id="grinch6" style="display: none">
+    <img src="Grinch.jpg" id="grinch7" style="display: none">
+    <img src="Grinch.jpg" id="grinch8" style="display: none">
+    <img src="Grinch.jpg" id="grinch9" style="display: none">
+    <img src="Present.jpg" id="present0" style="display: none">
+    <img src="Present.jpg" id="present1" style="display: none">
+    <img src="Present.jpg" id="present2" style="display: none">
+    <img src="Present.jpg" id="present3" style="display: none">
+    <img src="Present.jpg" id="present4" style="display: none">
+    <img src="Present.jpg" id="present5" style="display: none">
+    <img src="Present.jpg" id="present6" style="display: none">
+    <img src="Present.jpg" id="present7" style="display: none">
+    <img src="Present.jpg" id="present8" style="display: none">
+    <img src="Present.jpg" id="present9" style="display: none">
+    <div id="SantaSpace"></div>
+    <div id="lane0" class="Lane" style="border-top: none"></div>
+    <div id="lane1" class="Lane"></div>
+    <div id="lane2" class="Lane"></div>
+    <div id="lane3" class="Lane"></div>
+    <div id="lane4" class="Lane"></div>
+    <div id="lane5" class="Lane"></div>
+    <div id="inst1" style="display: block">
+        <p style="font-size: 25">
+            Welcome, and Merry Christmas!</br>
+        </p>
+        <button onclick="instructions(0)">Read instructions</button>
+        <button onclick="instructions(1)">Skip instructions</button>
+    </div>
+    <div id="inst2" style="display: none">
+        <p>
+            Hit the Grinch before he reaches your lane!</br>
+            Press UP/DOWN to move Santa,</br>
+            and use SPACE to throw presents at him!</br>
+        </p>
+        <button onclick="instructions(2)">Okay</button>
+    </div>
+    <div id="inst3" style="display: none">
+        <p style="font-size: 25">
+            Choose your difficuly:
+        </p>
+        <button onclick="userChoice(1, 0)">Easy</button>
+        <button onclick="userChoice(2, 0)">Medium</button>
+        <button onclick="userChoice(3, 0)">Hard</button>
+    </div>
+    <div id="inst4" style="display: none">
+        <p style="font-size: 25">
+            How many lanes would you like?
+        </p>
+        <button onclick="userChoice(0, 3)">3</button>
+        <button onclick="userChoice(0, 4)">4</button>
+        <button onclick="userChoice(0, 5)">5</button>
+        <button onclick="userChoice(0, 6)">6</button>
+    </div>
+    <div id="inst5" style="display: none">
+        <p style="font-size: 25">
+            Great! Ready to play?
+        </p>
+        <button onclick="instructions(3)">Start game</button>
+        <button onclick="instructions(4)">Change settings</button>
+    </div>
+    <div class="score">
+        <p id="hit">
+            Hit: 0
+        </p>
+        <p id="ammo">
+            Ammo: 10
+        </p>
+    </div>
+    <div id="gameOver" style="display: none; padding-bottom: 10px">
+        <p style="font-size: 25">
+            GAME OVER</br>
+            Wanna play again?
+        </p>
+        <p>
+            <a href="jslesson45_santa.html">Sure!</a>
+        </p>
+    </div>
+</body>
+</html>
